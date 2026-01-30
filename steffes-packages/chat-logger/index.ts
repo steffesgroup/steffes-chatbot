@@ -1,10 +1,22 @@
-import { Container, ContainerResponse, CosmosClient } from '@azure/cosmos';
+import { ContainerResponse, CosmosClient } from '@azure/cosmos';
+
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+
+  return { promise, resolve, reject };
+}
 
 export class ChatLogger {
   containerResponsePromise: Promise<ContainerResponse>;
   constructor() {
-    const promiseAndResolvers = (Promise as any).withResolvers();
-    this.containerResponsePromise = promiseAndResolvers.promise as any;
+    const deferred = createDeferred<ContainerResponse>();
+    this.containerResponsePromise = deferred.promise;
     (async () => {
       const endpoint = process.env['COSMOS_ENDPOINT'];
       const key = process.env['COSMOS_KEY'];
@@ -21,10 +33,10 @@ export class ChatLogger {
             id: 'Chatbot',
           })
           .then((containerResponse) => {
-            promiseAndResolvers.resolve(containerResponse);
+            deferred.resolve(containerResponse);
           })
           .catch((error) => {
-            promiseAndResolvers.reject(error);
+            deferred.reject(error);
           });
       } catch (error) {
         console.error(error);

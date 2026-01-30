@@ -1,19 +1,12 @@
-import React from 'react';
 import { Chat } from '@/components/Chat/Chat';
 import { Chatbar } from '@/components/Chatbar/Chatbar';
 import { Navbar } from '@/components/Mobile/Navbar';
-import { Promptbar } from '@/components/Promptbar/Promptbar';
 import { ChatBody, Conversation, Message } from '@/types/chat';
 import { KeyValuePair } from '@/types/data';
 import { ErrorMessage } from '@/types/error';
 import { LatestExportFormat, SupportedExportFormats } from '@/types/export';
 import { Folder, FolderType } from '@/types/folder';
-import {
-  OpenAIModel,
-  OpenAIModelID,
-  OpenAIModels,
-  fallbackModelID,
-} from '@/types/openai';
+import { OpenAIModel, OpenAIModelID } from '@/types/openai';
 import { Plugin, PluginKey } from '@/types/plugin';
 import { Prompt } from '@/types/prompt';
 import { getEndpoint } from '@/utils/app/api';
@@ -21,7 +14,7 @@ import {
   cleanConversationHistory,
   cleanSelectedConversation,
 } from '@/utils/app/clean';
-import { DEFAULT_SYSTEM_PROMPT, APP_VERSION } from '@/utils/app/const';
+import { APP_VERSION, DEFAULT_SYSTEM_PROMPT } from '@/utils/app/const';
 import {
   saveConversation,
   saveConversations,
@@ -39,7 +32,7 @@ import { GetServerSideProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import Head from 'next/head';
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -47,12 +40,14 @@ interface HomeProps {
   serverSideApiKeyIsSet: boolean;
   serverSidePluginKeysSet: boolean;
   defaultModelId: OpenAIModelID;
+  initialModels: OpenAIModel[];
 }
 
 const Home: React.FC<HomeProps> = ({
   serverSideApiKeyIsSet,
   serverSidePluginKeysSet,
   defaultModelId,
+  initialModels,
 }) => {
   const { t } = useTranslation('chat');
 
@@ -66,7 +61,7 @@ const Home: React.FC<HomeProps> = ({
 
   const [modelError, setModelError] = useState<ErrorMessage | null>(null);
 
-  const [models, setModels] = useState<OpenAIModel[]>([]);
+  const [models, setModels] = useState<OpenAIModel[]>(initialModels);
 
   const [folders, setFolders] = useState<Folder[]>([]);
 
@@ -78,7 +73,22 @@ const Home: React.FC<HomeProps> = ({
   const [showSidebar, setShowSidebar] = useState<boolean>(true);
 
   const [prompts, setPrompts] = useState<Prompt[]>([]);
-  // const [showPromptbar, setShowPromptbar] = useState<boolean>(true);
+
+  const getFallbackModel = (): OpenAIModel => {
+    const byDefault = models.find((m) => m.id === defaultModelId);
+    const byFirst = models[0];
+
+    if (byDefault) return byDefault;
+    if (byFirst) return byFirst;
+
+    // Should only happen if LLM_MODELS_JSON is misconfigured.
+    return {
+      id: defaultModelId || 'default',
+      name: defaultModelId || 'default',
+      maxLength: 12000,
+      tokenLimit: 4000,
+    };
+  };
 
   // REFS ----------------------------------------------
 
@@ -395,6 +405,19 @@ const Home: React.FC<HomeProps> = ({
     localStorage.setItem('showChatbar', JSON.stringify(!showSidebar));
   };
 
+  const backupLocalStorage = () => {
+    const conversationHistory = localStorage.getItem('conversationHistory');
+    const selectedConversation = localStorage.getItem('selectedConversation');
+
+    if (conversationHistory) {
+      localStorage.setItem('backup_conversationHistory', conversationHistory);
+    }
+
+    if (selectedConversation) {
+      localStorage.setItem('_selectedConversation', selectedConversation);
+    }
+  };
+
   // const handleTogglePromptbar = () => {
   //   setShowPromptbar(!showPromptbar);
   //   localStorage.setItem('showPromptbar', JSON.stringify(!showPromptbar));
@@ -495,9 +518,11 @@ const Home: React.FC<HomeProps> = ({
   const handleNewConversation = () => {
     const lastConversation = conversations[conversations.length - 1];
 
-    // Only use the last convo's model if it currently exists in OpenAIModels
-    let newModel;
-    const validModelIds = Object.values(OpenAIModels).map((m) => m.id);
+    const fallbackModel = getFallbackModel();
+
+    // Only use the last convo's model if it currently exists in the configured models
+    let newModel: OpenAIModel;
+    const validModelIds = models.map((m) => m.id);
     if (
       lastConversation &&
       lastConversation.model &&
@@ -506,12 +531,7 @@ const Home: React.FC<HomeProps> = ({
     ) {
       newModel = lastConversation.model;
     } else {
-      newModel = {
-        id: OpenAIModels[defaultModelId].id,
-        name: OpenAIModels[defaultModelId].name,
-        maxLength: OpenAIModels[defaultModelId].maxLength,
-        tokenLimit: OpenAIModels[defaultModelId].tokenLimit,
-      };
+      newModel = fallbackModel;
     }
 
     const newConversation: Conversation = {
@@ -547,11 +567,12 @@ const Home: React.FC<HomeProps> = ({
       );
       saveConversation(updatedConversations[updatedConversations.length - 1]);
     } else {
+      const fallbackModel = getFallbackModel();
       setSelectedConversation({
         id: uuidv4(),
         name: 'New conversation',
         messages: [],
-        model: OpenAIModels[defaultModelId],
+        model: fallbackModel,
         prompt: DEFAULT_SYSTEM_PROMPT,
         folderId: null,
       });
@@ -581,11 +602,12 @@ const Home: React.FC<HomeProps> = ({
     setConversations([]);
     localStorage.removeItem('conversationHistory');
 
+    const fallbackModel = getFallbackModel();
     setSelectedConversation({
       id: uuidv4(),
       name: 'New conversation',
       messages: [],
-      model: OpenAIModels[defaultModelId],
+      model: fallbackModel,
       prompt: DEFAULT_SYSTEM_PROMPT,
       folderId: null,
     });
@@ -626,12 +648,13 @@ const Home: React.FC<HomeProps> = ({
   // PROMPT OPERATIONS --------------------------------------------
 
   const handleCreatePrompt = () => {
+    const fallbackModel = getFallbackModel();
     const newPrompt: Prompt = {
       id: uuidv4(),
       name: `Prompt ${prompts.length + 1}`,
       description: '',
       content: '',
-      model: OpenAIModels[defaultModelId],
+      model: fallbackModel,
       folderId: null,
     };
 
@@ -689,6 +712,22 @@ const Home: React.FC<HomeProps> = ({
       setLightMode(theme as 'dark' | 'light');
     }
 
+    const storedVersion = localStorage.getItem('appVersion');
+
+    // First-time run: set version and continue.
+    if (!storedVersion) {
+      localStorage.removeItem('corrupted_conversationHistory');
+      localStorage.removeItem('corrupted_selectedConversation');
+      localStorage.removeItem('APP_VERSION');
+    }
+
+    // Version change: block initialization until user chooses.
+    if (storedVersion !== APP_VERSION) {
+      backupLocalStorage();
+      localStorage.setItem('appVersion', APP_VERSION);
+      return;
+    }
+
     const apiKey = localStorage.getItem('apiKey');
     if (serverSideApiKeyIsSet) {
       fetchModels('');
@@ -704,7 +743,13 @@ const Home: React.FC<HomeProps> = ({
       setPluginKeys([]);
       localStorage.removeItem('pluginKeys');
     } else if (pluginKeys) {
-      setPluginKeys(JSON.parse(pluginKeys));
+      try {
+        setPluginKeys(JSON.parse(pluginKeys));
+      } catch (error) {
+        console.error(error);
+        localStorage.removeItem('pluginKeys');
+        setPluginKeys([]);
+      }
     }
 
     if (window.innerWidth < 640) {
@@ -723,12 +768,24 @@ const Home: React.FC<HomeProps> = ({
 
     const folders = localStorage.getItem('folders');
     if (folders) {
-      setFolders(JSON.parse(folders));
+      try {
+        setFolders(JSON.parse(folders));
+      } catch (error) {
+        console.error(error);
+        localStorage.removeItem('folders');
+        setFolders([]);
+      }
     }
 
     const prompts = localStorage.getItem('prompts');
     if (prompts) {
-      setPrompts(JSON.parse(prompts));
+      try {
+        setPrompts(JSON.parse(prompts));
+      } catch (error) {
+        console.error(error);
+        localStorage.removeItem('prompts');
+        setPrompts([]);
+      }
     }
 
     const conversationHistory = localStorage.getItem('conversationHistory');
@@ -736,8 +793,13 @@ const Home: React.FC<HomeProps> = ({
       try {
         const parsedConversationHistory: Conversation[] =
           JSON.parse(conversationHistory);
+        const fallbackModel = getFallbackModel();
         const cleanedConversationHistory = cleanConversationHistory(
           parsedConversationHistory,
+          {
+            fallbackModel,
+            validModelIds: models.map((m) => m.id),
+          },
         );
         setConversations(cleanedConversationHistory);
       } catch (error) {
@@ -750,27 +812,34 @@ const Home: React.FC<HomeProps> = ({
       try {
         const parsedSelectedConversation: Conversation =
           JSON.parse(selectedConversation);
+        const fallbackModel = getFallbackModel();
         const cleanedSelectedConversation = cleanSelectedConversation(
           parsedSelectedConversation,
+          {
+            fallbackModel,
+            validModelIds: models.map((m) => m.id),
+          },
         );
         setSelectedConversation(cleanedSelectedConversation);
       } catch (error) {
         console.error(error);
+        const fallbackModel = getFallbackModel();
         setSelectedConversation({
           id: uuidv4(),
           name: 'New conversation',
           messages: [],
-          model: OpenAIModels[defaultModelId],
+          model: fallbackModel,
           prompt: DEFAULT_SYSTEM_PROMPT,
           folderId: null,
         });
       }
     } else {
+      const fallbackModel = getFallbackModel();
       setSelectedConversation({
         id: uuidv4(),
         name: 'New conversation',
         messages: [],
-        model: OpenAIModels[defaultModelId],
+        model: fallbackModel,
         prompt: DEFAULT_SYSTEM_PROMPT,
         folderId: null,
       });
@@ -788,6 +857,7 @@ const Home: React.FC<HomeProps> = ({
         />
         <link rel="icon" href="/favicon.ico" />
       </Head>
+
       {selectedConversation && (
         <main
           className={`flex h-screen w-screen flex-col text-sm text-white dark:text-white ${lightMode}`}
@@ -904,15 +974,17 @@ const Home: React.FC<HomeProps> = ({
 export default Home;
 
 export const getServerSideProps: GetServerSideProps = async ({ locale }) => {
-  const defaultModelId =
-    (process.env.DEFAULT_MODEL &&
-      Object.values(OpenAIModelID).includes(
-        process.env.DEFAULT_MODEL as OpenAIModelID,
-      ) &&
-      process.env.DEFAULT_MODEL) ||
-    fallbackModelID;
+  const {
+    getDefaultModelIdFromEnv,
+    getLlmModelConfigsFromEnv,
+    getPublicModelsFromEnv,
+  } = await import('@/utils/server/llmModels');
 
-  // const defaultModelId = process.env.DEFAULT_MODEL;
+  const initialModels = getPublicModelsFromEnv();
+  const defaultModelId = getDefaultModelIdFromEnv();
+  const serverSideApiKeyIsSet = getLlmModelConfigsFromEnv().some(
+    (m) => typeof m.apiKey === 'string' && m.apiKey.trim() !== '',
+  );
 
   let serverSidePluginKeysSet = false;
 
@@ -925,8 +997,9 @@ export const getServerSideProps: GetServerSideProps = async ({ locale }) => {
 
   return {
     props: {
-      serverSideApiKeyIsSet: !!process.env.OPENAI_API_KEY_ONE,
+      serverSideApiKeyIsSet,
       defaultModelId,
+      initialModels,
       serverSidePluginKeysSet,
       ...(await serverSideTranslations(locale ?? 'en', [
         'common',

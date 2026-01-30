@@ -7,18 +7,6 @@ export const exportDataWithCorrupted = () => {
   let corruptedConv = localStorage.getItem('corrupted_conversationHistory');
   let corruptedSelConv = localStorage.getItem('corrupted_selectedConversation');
 
-  if (history) {
-    history = JSON.parse(history);
-  }
-
-  if (folders) {
-    folders = JSON.parse(folders);
-  }
-
-  if(prompts){
-    prompts = JSON.parse(prompts);
-  }
-
   function maybeParse(str: string | null) {
     if (!str) return undefined;
     try {
@@ -27,6 +15,10 @@ export const exportDataWithCorrupted = () => {
       return str; // fallback: raw string if not JSON
     }
   }
+
+  history = maybeParse(history) as any;
+  folders = maybeParse(folders) as any;
+  prompts = maybeParse(prompts) as any;
 
   const data: any = {
     version: 4,
@@ -61,7 +53,6 @@ import {
   LatestExportFormat,
   SupportedExportFormats,
 } from '@/types/export';
-import { cleanConversationHistory } from './clean';
 
 export function isExportFormatV1(obj: any): obj is ExportFormatV1 {
   return Array.isArray(obj);
@@ -82,38 +73,11 @@ export function isExportFormatV4(obj: any): obj is ExportFormatV4 {
 export const isLatestExportFormat = isExportFormatV4;
 
 export function cleanData(data: SupportedExportFormats): LatestExportFormat {
-  if (isExportFormatV1(data)) {
-    return {
-      version: 4,
-      history: cleanConversationHistory(data),
-      folders: [],
-      prompts: [],
-    };
-  }
-
-  if (isExportFormatV2(data)) {
-    return {
-      version: 4,
-      history: cleanConversationHistory(data.history || []),
-      folders: (data.folders || []).map((chatFolder) => ({
-        id: chatFolder.id.toString(),
-        name: chatFolder.name,
-        type: 'chat',
-      })),
-      prompts: [],
-    };
-  }
-
-  if (isExportFormatV3(data)) {    
-    return {...data, version: 4, prompts: []};
-  }
-
-  if(isExportFormatV4(data)){
+  if (isExportFormatV4(data)) {
     return data;
   }
 
-
-  throw new Error('Unsupported data format');
+  throw new Error('Unsupported data format (only version 4 is supported)');
 }
 
 function currentDate() {
@@ -136,7 +100,7 @@ export const exportData = () => {
     folders = JSON.parse(folders);
   }
 
-  if(prompts){
+  if (prompts) {
     prompts = JSON.parse(prompts);
   }
 
@@ -165,7 +129,7 @@ export const importData = (
   data: SupportedExportFormats,
 ): LatestExportFormat => {
   const cleanedData = cleanData(data);
-  const { history,folders, prompts } = cleanedData;
+  const { history, folders, prompts } = cleanedData;
 
   const conversations = history;
   localStorage.setItem('conversationHistory', JSON.stringify(conversations));

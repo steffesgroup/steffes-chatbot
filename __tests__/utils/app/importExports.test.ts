@@ -1,7 +1,6 @@
 import { ExportFormatV1, ExportFormatV2, ExportFormatV4 } from '@/types/export';
-import { OpenAIModels, OpenAIModelID } from '@/types/openai';
 import { DEFAULT_SYSTEM_PROMPT } from '@/utils/app/const';
-import { it, describe, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import {
   cleanData,
@@ -63,8 +62,15 @@ describe('Export Format Functions', () => {
 });
 
 describe('cleanData Functions', () => {
+  const sampleModel = {
+    id: 'test-model',
+    name: 'Test Model',
+    maxLength: 12000,
+    tokenLimit: 4000,
+  };
+
   describe('cleaning v1 data', () => {
-    it('should return the latest format', () => {
+    it('should throw (legacy formats not supported)', () => {
       const data = [
         {
           id: 1,
@@ -81,37 +87,15 @@ describe('cleanData Functions', () => {
           ],
         },
       ] as ExportFormatV1;
-      const obj = cleanData(data);
-      expect(isLatestExportFormat(obj)).toBe(true);
-      expect(obj).toEqual({
-        version: 4,
-        history: [
-          {
-            id: 1,
-            name: 'conversation 1',
-            messages: [
-              {
-                role: 'user',
-                content: "what's up ?",
-              },
-              {
-                role: 'assistant',
-                content: 'Hi',
-              },
-            ],
-            model: OpenAIModels[OpenAIModelID.GPT_3_5],
-            prompt: DEFAULT_SYSTEM_PROMPT,
-            folderId: null,
-          },
-        ],
-        folders: [],
-        prompts:[]
-      });
+
+      expect(() => cleanData(data)).toThrow(
+        'Unsupported data format (only version 4 is supported)',
+      );
     });
   });
 
   describe('cleaning v2 data', () => {
-    it('should return the latest format', () => {
+    it('should throw (legacy formats not supported)', () => {
       const data = {
         history: [
           {
@@ -136,38 +120,10 @@ describe('cleanData Functions', () => {
           },
         ],
       } as ExportFormatV2;
-      const obj = cleanData(data);
-      expect(isLatestExportFormat(obj)).toBe(true);
-      expect(obj).toEqual({
-        version: 4,
-        history: [
-          {
-            id: '1',
-            name: 'conversation 1',
-            messages: [
-              {
-                role: 'user',
-                content: "what's up ?",
-              },
-              {
-                role: 'assistant',
-                content: 'Hi',
-              },
-            ],
-            model: OpenAIModels[OpenAIModelID.GPT_3_5],
-            prompt: DEFAULT_SYSTEM_PROMPT,
-            folderId: null,
-          },
-        ],
-        folders: [
-          {
-            id: '1',
-            name: 'folder 1',
-            type: 'chat',
-          },
-        ],
-        prompts: [],
-      });
+
+      expect(() => cleanData(data)).toThrow(
+        'Unsupported data format (only version 4 is supported)',
+      );
     });
   });
 
@@ -189,7 +145,7 @@ describe('cleanData Functions', () => {
                 content: 'Hi',
               },
             ],
-            model: OpenAIModels[OpenAIModelID.GPT_3_5],
+            model: sampleModel,
             prompt: DEFAULT_SYSTEM_PROMPT,
             folderId: null,
           },
@@ -207,12 +163,12 @@ describe('cleanData Functions', () => {
             name: 'prompt 1',
             description: '',
             content: '',
-            model: OpenAIModels[OpenAIModelID.GPT_3_5],
+            model: sampleModel,
             folderId: null,
           },
         ],
       } as ExportFormatV4;
-      
+
       const obj = cleanData(data);
       expect(isLatestExportFormat(obj)).toBe(true);
       expect(obj).toEqual({
@@ -231,7 +187,7 @@ describe('cleanData Functions', () => {
                 content: 'Hi',
               },
             ],
-            model: OpenAIModels[OpenAIModelID.GPT_3_5],
+            model: sampleModel,
             prompt: DEFAULT_SYSTEM_PROMPT,
             folderId: null,
           },
@@ -249,13 +205,11 @@ describe('cleanData Functions', () => {
             name: 'prompt 1',
             description: '',
             content: '',
-            model: OpenAIModels[OpenAIModelID.GPT_3_5],
+            model: sampleModel,
             folderId: null,
           },
         ],
-
       });
     });
   });
-  
 });

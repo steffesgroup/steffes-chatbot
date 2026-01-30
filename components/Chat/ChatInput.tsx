@@ -2,27 +2,19 @@ import { Message } from '@/types/chat';
 import { OpenAIModel } from '@/types/openai';
 import { Plugin } from '@/types/plugin';
 import { Prompt } from '@/types/prompt';
-import {
-  IconBolt,
-  IconBrandGoogle,
-  IconPlayerStop,
-  IconRepeat,
-  IconSend,
-} from '@tabler/icons-react';
+import { APP_VERSION } from '@/utils/app/const';
+import { IconPlayerStop, IconRepeat, IconSend } from '@tabler/icons-react';
 import { useTranslation } from 'next-i18next';
 import {
   FC,
   KeyboardEvent,
   MutableRefObject,
-  useCallback,
   useEffect,
   useRef,
   useState,
 } from 'react';
-import { PluginSelect } from './PluginSelect';
 import { PromptList } from './PromptList';
 import { VariableModal } from './VariableModal';
-import { APP_VERSION } from '@/utils/app/const';
 
 interface Props {
   messageIsStreaming: boolean;
@@ -353,19 +345,25 @@ export const ChatInput: FC<Props> = ({
       </div>
       <div className="px-3 pb-3 pt-2 text-center text-[12px] text-black/50 dark:text-white/50 md:px-4 md:pb-6 md:pt-3">
         <a
-          href="https://github.com/mckaywrigley/chatbot-ui"
+          href="https://github.com/Stan-Stani/steffes-chatbot"
           target="_blank"
           rel="noreferrer"
           className="underline"
         >
-          ChatBot UI
-        </a>
-        .{' '}
-        {t(
-          "Chatbot UI is an advanced chatbot kit for OpenAI's chat models aiming to mimic ChatGPT's interface and functionality.",
-        )}{' '}
-        Version: {APP_VERSION}
+          Steffes Chatbot (v{APP_VERSION})
+        </a> is{' '}
+        based on{' '}
+        <a
+          href="https://github.com/mckaywrigley/chatbot-ui/tree/legacy"
+          target="_blank"
+          rel="noreferrer"
+          className="underline"
+        >
+          Chatbot UI (Legacy)
+        </a>.{' '}
+       
       </div>
+      
     </div>
   );
 };
