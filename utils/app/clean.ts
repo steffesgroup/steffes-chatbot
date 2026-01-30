@@ -1,8 +1,14 @@
 import { Conversation } from '@/types/chat';
-import { OpenAIModelID, OpenAIModels } from '@/types/openai';
+import { OpenAIModel } from '@/types/openai';
 import { DEFAULT_SYSTEM_PROMPT } from './const';
 
-export const cleanSelectedConversation = (conversation: Conversation) => {
+export const cleanSelectedConversation = (
+  conversation: Conversation,
+  options: {
+    fallbackModel: OpenAIModel;
+    validModelIds?: string[];
+  },
+) => {
   // added model for each conversation (3/20/23)
   // added system prompt for each conversation (3/21/23)
   // added folders (3/23/23)
@@ -11,14 +17,15 @@ export const cleanSelectedConversation = (conversation: Conversation) => {
   let updatedConversation = conversation;
 
   // Model validation: ensure model exists in current models
-  const validModelIds = Object.values(OpenAIModels).map((m) => m.id);
-  const fallbackModel = OpenAIModels[OpenAIModelID.GPT_4_1];
+  const validModelIds = options.validModelIds;
+  const fallbackModel = options.fallbackModel;
 
   if (
     !updatedConversation.model ||
     // The model may be a partially serialized object (old export), check its id
     !updatedConversation.model.id ||
-    !validModelIds.includes(updatedConversation.model.id)
+    (Array.isArray(validModelIds) &&
+      !validModelIds.includes(updatedConversation.model.id))
   ) {
     updatedConversation = {
       ...updatedConversation,
@@ -44,7 +51,13 @@ export const cleanSelectedConversation = (conversation: Conversation) => {
   return updatedConversation;
 };
 
-export const cleanConversationHistory = (history: any[]): Conversation[] => {
+export const cleanConversationHistory = (
+  history: any[],
+  options: {
+    fallbackModel: OpenAIModel;
+    validModelIds?: string[];
+  },
+): Conversation[] => {
   // added model for each conversation (3/20/23)
   // added system prompt for each conversation (3/21/23)
   // added folders (3/23/23)
@@ -55,15 +68,16 @@ export const cleanConversationHistory = (history: any[]): Conversation[] => {
     return [];
   }
 
-  const validModelIds = Object.values(OpenAIModels).map((m) => m.id);
-  const fallbackModel = OpenAIModels[OpenAIModelID.GPT_4_1];
+  const validModelIds = options.validModelIds;
+  const fallbackModel = options.fallbackModel;
 
   return history.reduce((acc: any[], conversation) => {
     try {
       if (
         !conversation.model ||
         !conversation.model.id ||
-        !validModelIds.includes(conversation.model.id)
+        (Array.isArray(validModelIds) &&
+          !validModelIds.includes(conversation.model.id))
       ) {
         conversation.model = fallbackModel;
       }

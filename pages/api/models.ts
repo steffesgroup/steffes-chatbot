@@ -1,4 +1,4 @@
-import { OpenAIModelID } from '../../types/openai';
+import { getPublicModelsFromEnv } from '@/utils/server/llmModels';
 
 export const config = {
   runtime: 'edge',
@@ -6,15 +6,9 @@ export const config = {
 
 const handler = async (req: Request): Promise<Response> => {
   try {
-    return new Response(
-      JSON.stringify([
-        { id: OpenAIModelID.GPT_4_1, name: OpenAIModelID.GPT_4_1 },
-        { id: OpenAIModelID.GPT_5, name: OpenAIModelID.GPT_5 },
-      ]),
-      {
-        status: 200,
-      },
-    );
+    return new Response(JSON.stringify(getPublicModelsFromEnv()), {
+      status: 200,
+    });
   } catch (error) {
     console.error(error);
     return new Response('Error', { status: 500 });

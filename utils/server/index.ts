@@ -5,13 +5,7 @@ import {
   ParsedEvent,
   ReconnectInterval,
 } from 'eventsource-parser';
-import { OpenAIModelID } from '../../types/openai';
-import {
-  OPENAI_API_ENDPOINT_ONE,
-  OPENAI_API_ENDPOINT_TWO,
-  OPENAI_API_KEY_ONE,
-  OPENAI_API_KEY_TWO,
-} from '../app/const';
+import { getModelConfigById } from './llmModels';
 
 export class OpenAIError extends Error {
   type: string;
@@ -33,51 +27,46 @@ export const OpenAIStream = async (
   key: string,
   messages: Message[],
 ) => {
-  let modelEndpoint = '';
-  let apiKey = '';
-  switch (model.id) {
-    default:
-      throw new Error(`No registered model matches selection "${model.id}"`);
-      break;
+  const modelConfig = getModelConfigById(model.id);
+  const modelEndpoint = modelConfig.endpoint;
+  const apiKey = key ? key : modelConfig.apiKey;
 
-    case OpenAIModelID.GPT_5:
-      modelEndpoint = OPENAI_API_ENDPOINT_TWO;
-      apiKey = OPENAI_API_KEY_TWO;
-      break;
-
-    case OpenAIModelID.GPT_4_1:
-      modelEndpoint = OPENAI_API_ENDPOINT_ONE;
-      apiKey = OPENAI_API_KEY_ONE;
-      break;
+  if (!apiKey) {
+    throw new Error(
+      `No API key provided for model "${model.id}" (set apiKey in LLM_MODELS_JSON or provide a key in the UI)`,
+    );
   }
+
+  const body: Record<string, any> = {
+    model: model.id,
+    messages: [
+      {
+        role: 'system',
+        content: systemPrompt,
+      },
+      ...messages,
+    ],
+    stream: true,
+  };
+
+  if (modelConfig.request) {
+    for (const [field, value] of Object.entries(modelConfig.request)) {
+      if (value === null) {
+        delete body[field];
+      } else {
+        body[field] = value;
+      }
+    }
+  }
+  console.log('lalonde', modelConfig);
 
   const res = await fetch(`${modelEndpoint}`, {
     headers: {
       'Content-Type': 'application/json',
-      'Api-Key': `${key ? key : apiKey}`,
+      'Api-Key': apiKey,
     },
     method: 'POST',
-    body: JSON.stringify({
-      model: model.id,
-      messages: [
-        {
-          role: 'system',
-          content: systemPrompt,
-        },
-        ...messages,
-      ],
-
-      temperature: 0.7,
-      top_p: 0.95,
-      // gpt5 only takes temp 1 and doesn't have top_p
-      ...(model.id === OpenAIModelID.GPT_5
-        ? { temperature: 1, top_p: undefined }
-        : {}),
-      frequency_penalty: 0,
-      presence_penalty: 0,
-      // max_tokens: 800,
-      stream: true,
-    }),
+    body: JSON.stringify(body),
   });
 
   const encoder = new TextEncoder();
