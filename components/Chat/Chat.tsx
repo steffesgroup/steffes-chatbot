@@ -7,13 +7,13 @@ import { Prompt } from '@/types/prompt';
 import { throttle } from '@/utils';
 import { IconArrowDown, IconClearAll, IconSettings } from '@tabler/icons-react';
 import { useTranslation } from 'next-i18next';
-import Image from 'next/image';
 import {
   FC,
   MutableRefObject,
   memo,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -70,6 +70,17 @@ export const Chat: FC<Props> = memo(
     const [showSettings, setShowSettings] = useState<boolean>(false);
     const [showScrollDownButton, setShowScrollDownButton] =
       useState<boolean>(false);
+
+    const conversationCostUSD = useMemo(() => {
+      return conversation.messages.reduce((total, message) => {
+        return total + (message.costUSD ?? 0);
+      }, 0);
+    }, [conversation.messages]);
+
+    const formattedConversationCost = useMemo(() => {
+      const roundedUpCents = Math.ceil(conversationCostUSD * 100);
+      return (roundedUpCents / 100).toFixed(2);
+    }, [conversationCostUSD]);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -256,8 +267,10 @@ export const Chat: FC<Props> = memo(
                 </>
               ) : (
                 <>
-                  <div className="flex justify-center border border-b-neutral-300 bg-neutral-100 py-2 text-sm text-neutral-500 dark:border-none dark:bg-[#444654] dark:text-neutral-200">
+                  <div className="sticky top-0 z-10 flex justify-center border border-b-neutral-300 bg-neutral-100 py-2 text-sm text-neutral-500 shadow-sm dark:border-none dark:bg-[#444654] dark:text-neutral-200 dark:shadow-black/30">
                     {t('Model')}: {conversation.model.name}
+                    {' · '}
+                    {t('Cost')}: ${formattedConversationCost}
                     <button
                       className="ml-2 cursor-pointer hover:opacity-50"
                       onClick={handleSettings}

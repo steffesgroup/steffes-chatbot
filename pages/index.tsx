@@ -1,7 +1,7 @@
 import { Chat } from '@/components/Chat/Chat';
 import { Chatbar } from '@/components/Chatbar/Chatbar';
 import { Navbar } from '@/components/Mobile/Navbar';
-import { ChatBody, Conversation, Message } from '@/types/chat';
+import { ChatBody, Conversation, CostResponse, Message } from '@/types/chat';
 import { KeyValuePair } from '@/types/data';
 import { ErrorMessage } from '@/types/error';
 import { LatestExportFormat, SupportedExportFormats } from '@/types/export';
@@ -239,6 +239,66 @@ const Home: React.FC<HomeProps> = ({
             };
 
             setSelectedConversation(updatedConversation);
+          }
+        }
+
+        const assistantMessageIndex = updatedConversation.messages.length - 1;
+        const assistantMessage =
+          updatedConversation.messages[assistantMessageIndex];
+
+        if (assistantMessage?.role === 'assistant') {
+          try {
+            const costResponse = await fetch('/api/cost', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                model: updatedConversation.model,
+                prompt: updatedConversation.prompt,
+                messages: updatedConversation.messages.slice(0, -1),
+                assistantMessage: assistantMessage.content,
+              }),
+            });
+
+            if (costResponse.ok) {
+              const costData = (await costResponse.json()) as CostResponse;
+
+              if (!costData.priced) {
+                console.warn('Cost pricing lookup failed', {
+                  selectedModelId: updatedConversation.model.id,
+                  warning: costData.warning,
+                  pricingModelId: costData.pricingModelId,
+                });
+              }
+
+              const updatedMessages: Message[] =
+                updatedConversation.messages.map((existingMessage, index) => {
+                  if (index === assistantMessageIndex) {
+                    return {
+                      ...existingMessage,
+                      costUSD: costData.totalCostUSD,
+                    };
+                  }
+
+                  return existingMessage;
+                });
+
+              updatedConversation = {
+                ...updatedConversation,
+                messages: updatedMessages,
+              };
+
+              setSelectedConversation(updatedConversation);
+            }
+            if (!costResponse.ok) {
+              console.warn('Cost endpoint returned non-OK response', {
+                status: costResponse.status,
+                statusText: costResponse.statusText,
+              });
+            }
+          } catch (error) {
+            console.error('Failed to calculate message cost', error);
           }
         }
 
