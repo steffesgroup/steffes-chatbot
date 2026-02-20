@@ -6,12 +6,12 @@ import type {
   DashboardChatsResponse,
 } from './api/dashboard/chats';
 import type {
-  DashboardUsageEvent,
-  DashboardUsageResponse,
-  DashboardUsageSummary,
   DashboardUsageByDayRow,
   DashboardUsageByModelRow,
   DashboardUsageByUserRow,
+  DashboardUsageEvent,
+  DashboardUsageResponse,
+  DashboardUsageSummary,
   DashboardUsageTotals,
 } from './api/dashboard/usage';
 
@@ -36,6 +36,14 @@ export default function DashboardPage() {
   const [byModel, setByModel] = useState<DashboardUsageByModelRow[]>([]);
   const [topUsers, setTopUsers] = useState<DashboardUsageByUserRow[]>([]);
   const [topics, setTopics] = useState<DashboardTopicRow[]>([]);
+  const [requestCharges, setRequestCharges] = useState<{
+    usageTotalRU: number;
+    usageSummariesRU: number;
+    usageEventsRU: number;
+    chatsRU: number;
+    topicsRU: number;
+    totalRU: number;
+  } | null>(null);
   const [expandedTopicKeywords, setExpandedTopicKeywords] = useState<
     Set<string>
   >(() => new Set());
@@ -99,6 +107,17 @@ export default function DashboardPage() {
         setTopUsers(usageJson.topUsers ?? []);
         setChats(chatsJson.chats ?? []);
         setTopics(topicsJson.topics ?? []);
+        setRequestCharges({
+          usageTotalRU: usageJson.requestChargeRU?.total ?? 0,
+          usageSummariesRU: usageJson.requestChargeRU?.summaries ?? 0,
+          usageEventsRU: usageJson.requestChargeRU?.events ?? 0,
+          chatsRU: chatsJson.requestChargeRU ?? 0,
+          topicsRU: topicsJson.requestChargeRU ?? 0,
+          totalRU:
+            (usageJson.requestChargeRU?.total ?? 0) +
+            (chatsJson.requestChargeRU ?? 0) +
+            (topicsJson.requestChargeRU ?? 0),
+        });
       } catch (e: any) {
         if (cancelled) return;
         setError(e?.message ?? 'Failed to load dashboard');
@@ -168,6 +187,44 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="mt-6 space-y-8">
+            <section>
+              <h2 className="text-lg font-semibold">
+                Request Charge (RUs) ({rangeLabel})
+              </h2>
+              <div className="mt-3 overflow-x-auto rounded border border-gray-700">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-gray-800 text-gray-200">
+                    <tr>
+                      <th className="px-3 py-2">Usage (summaries)</th>
+                      <th className="px-3 py-2">Usage (events)</th>
+                      <th className="px-3 py-2">Chats</th>
+                      <th className="px-3 py-2">Topics</th>
+                      <th className="px-3 py-2">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="text-gray-100">
+                      <td className="px-3 py-2">
+                        {(requestCharges?.usageSummariesRU ?? 0).toFixed(2)}
+                      </td>
+                      <td className="px-3 py-2">
+                        {(requestCharges?.usageEventsRU ?? 0).toFixed(2)}
+                      </td>
+                      <td className="px-3 py-2">
+                        {(requestCharges?.chatsRU ?? 0).toFixed(2)}
+                      </td>
+                      <td className="px-3 py-2">
+                        {(requestCharges?.topicsRU ?? 0).toFixed(2)}
+                      </td>
+                      <td className="px-3 py-2">
+                        {(requestCharges?.totalRU ?? 0).toFixed(2)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
             <section>
               <h2 className="text-lg font-semibold">Totals ({rangeLabel})</h2>
               <div className="mt-3 overflow-x-auto rounded border border-gray-700">

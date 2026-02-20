@@ -20,6 +20,7 @@ export type DashboardChatItem = {
 
 export type DashboardChatsResponse = {
   chats: DashboardChatItem[];
+  requestChargeRU: number;
 };
 
 type RawChatDoc = {
@@ -66,13 +67,15 @@ export default async function handler(
       parameters: rangeParams,
     };
 
-    const { resources } = await container.items.query(query).fetchAll();
+    const resp = await container.items.query(query).fetchAll();
+    const resources = resp.resources;
+    const requestChargeRU = getRequestChargeRU(resp.headers);
 
     const chats: DashboardChatItem[] = (resources ?? [])
       .map((doc: RawChatDoc) => toDashboardItem(doc))
       .filter(Boolean) as DashboardChatItem[];
 
-    res.status(200).json({ chats });
+    res.status(200).json({ chats, requestChargeRU });
   } catch (e: any) {
     const statusCode =
       typeof e?.statusCode === 'number'
@@ -93,6 +96,18 @@ export default async function handler(
       error: statusCode === 500 ? 'Internal Server Error' : e.message,
     });
   }
+}
+
+function getRequestChargeRU(headers: any): number {
+  const raw =
+    headers?.get?.('x-ms-request-charge') ??
+    headers?.get?.('X-MS-REQUEST-CHARGE') ??
+    headers?.['x-ms-request-charge'] ??
+    headers?.['X-MS-REQUEST-CHARGE'];
+
+  const value = typeof raw === 'string' ? raw : String(raw ?? '');
+  const num = Number(value);
+  return Number.isFinite(num) ? num : 0;
 }
 
 function toDashboardItem(doc: RawChatDoc): DashboardChatItem | null {

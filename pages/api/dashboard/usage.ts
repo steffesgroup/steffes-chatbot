@@ -70,6 +70,11 @@ export type DashboardUsageResponse = {
   byDay: DashboardUsageByDayRow[];
   byModel: DashboardUsageByModelRow[];
   topUsers: DashboardUsageByUserRow[];
+  requestChargeRU: {
+    summaries: number;
+    events: number;
+    total: number;
+  };
 };
 
 export default async function handler(
@@ -113,12 +118,16 @@ export default async function handler(
 
     // Use only the simplest Cosmos queries (no SUM/GROUP BY/IIF) for maximum compatibility.
     // Compute aggregates in Node from the returned events list.
-    const [{ resources: summaries }, { resources: eventsRaw }] = await Promise.all(
-      [
-        container.items.query(summariesQuery).fetchAll(),
-        container.items.query(eventsQuery).fetchAll(),
-      ],
-    );
+    const [summariesResp, eventsResp] = await Promise.all([
+      container.items.query(summariesQuery).fetchAll(),
+      container.items.query(eventsQuery).fetchAll(),
+    ]);
+
+    const summaries = summariesResp.resources;
+    const eventsRaw = eventsResp.resources;
+
+    const summariesRU = getRequestChargeRU(summariesResp.headers);
+    const eventsRU = getRequestChargeRU(eventsResp.headers);
 
     const events = (eventsRaw ?? []) as DashboardUsageEvent[];
 
@@ -141,7 +150,8 @@ export default async function handler(
       totals.assistantMessages += 1;
       if (e.priced) totals.pricedAssistantMessages += 1;
 
-      const day = typeof e.createdAt === 'string' ? e.createdAt.slice(0, 10) : '';
+      const day =
+        typeof e.createdAt === 'string' ? e.createdAt.slice(0, 10) : '';
       if (day) {
         const existing = byDayMap.get(day) ?? {
           day,
@@ -208,6 +218,11 @@ export default async function handler(
       byDay,
       byModel,
       topUsers,
+      requestChargeRU: {
+        summaries: summariesRU,
+        events: eventsRU,
+        total: summariesRU + eventsRU,
+      },
     });
   } catch (e: any) {
     const statusCode =
@@ -229,4 +244,16 @@ export default async function handler(
       error: statusCode === 500 ? 'Internal Server Error' : e.message,
     });
   }
+}
+
+function getRequestChargeRU(headers: any): number {
+  const raw =
+    headers?.get?.('x-ms-request-charge') ??
+    headers?.get?.('X-MS-REQUEST-CHARGE') ??
+    headers?.['x-ms-request-charge'] ??
+    headers?.['X-MS-REQUEST-CHARGE'];
+
+  const value = typeof raw === 'string' ? raw : String(raw ?? '');
+  const num = Number(value);
+  return Number.isFinite(num) ? num : 0;
 }
