@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { ChatLogger } from '../../../steffes-packages/chat-logger';
+import { parseDashboardRange } from '../../../utils/server/dashboardRange';
 import { requireSwaRole } from '../../../utils/server/identity';
 
 const chatLogger = new ChatLogger();
@@ -40,6 +41,8 @@ export default async function handler(
       return;
     }
 
+    const rangeInfo = parseDashboardRange(req.query.range);
+
     const headers = new Headers();
     for (const [k, v] of Object.entries(req.headers)) {
       if (typeof v === 'string') headers.set(k, v);
@@ -51,9 +54,16 @@ export default async function handler(
     const container = (await chatLogger.containerResponsePromise).container;
 
     // Chat docs don’t have a `type` or `createdAt`; use `_ts` and the presence of `questionAnswerTuple`.
+    const whereRange =
+      typeof rangeInfo.minTsSeconds === 'number' ? ' AND c._ts >= @minTs' : '';
+    const rangeParams =
+      typeof rangeInfo.minTsSeconds === 'number'
+        ? [{ name: '@minTs', value: rangeInfo.minTsSeconds }]
+        : [];
+
     const query = {
-      query:
-        'SELECT TOP 100 c.id, c.questionAnswerTuple, c._ts FROM c WHERE IS_DEFINED(c.questionAnswerTuple) ORDER BY c._ts DESC',
+      query: `SELECT TOP 100 c.id, c.questionAnswerTuple, c._ts FROM c WHERE IS_DEFINED(c.questionAnswerTuple)${whereRange} ORDER BY c._ts DESC`,
+      parameters: rangeParams,
     };
 
     const { resources } = await container.items.query(query).fetchAll();
@@ -64,7 +74,21 @@ export default async function handler(
 
     res.status(200).json({ chats });
   } catch (e: any) {
-    const statusCode = typeof e?.statusCode === 'number' ? e.statusCode : 500;
+    const statusCode =
+      typeof e?.statusCode === 'number'
+        ? e.statusCode
+        : typeof e?.code === 'number'
+        ? e.code
+        : 500;
+
+    if (statusCode >= 500) {
+      console.warn('[dashboard/chats] Failed', {
+        statusCode,
+        message: e?.message,
+        code: e?.code,
+        cosmosStatusCode: e?.statusCode,
+      });
+    }
     res.status(statusCode).json({
       error: statusCode === 500 ? 'Internal Server Error' : e.message,
     });
