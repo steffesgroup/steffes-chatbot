@@ -189,7 +189,7 @@ export default function DashboardPage() {
           <div className="mt-6 space-y-8">
             <section>
               <h2 className="text-lg font-semibold">
-                Request Charge (RUs) ({rangeLabel})
+                Request Charge (RUs) for this Query ({rangeLabel})
               </h2>
               <div className="mt-3 overflow-x-auto rounded border border-gray-700">
                 <table className="w-full text-left text-sm">
