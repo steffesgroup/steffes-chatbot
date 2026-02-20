@@ -102,6 +102,20 @@ export function requireSwaRole(
   }
 
   const roles = new Set(principal.userRoles.map((r) => r.toLowerCase()));
+  // Some auth providers (e.g. Entra via Easy Auth) may not populate `userRoles`
+  // with app roles, but will include them in claims.
+  for (const claim of principal.claims ?? []) {
+    const typ = claim.typ.toLowerCase();
+    if (
+      typ === 'roles' ||
+      typ === 'role' ||
+      typ.endsWith('/role') ||
+      typ.includes('claims/role')
+    ) {
+      roles.add(claim.val.toLowerCase());
+    }
+  }
+
   if (!roles.has(requiredRole.toLowerCase())) {
     const err = new Error('Forbidden');
     (err as any).statusCode = 403;
