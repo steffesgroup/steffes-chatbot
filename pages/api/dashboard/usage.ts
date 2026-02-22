@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { ChatLogger } from '../../../steffes-packages/chat-logger';
 import { parseDashboardRange } from '../../../utils/server/dashboardRange';
-import { requireSwaRole } from '../../../utils/server/identity';
+import { requireRole } from '../../../utils/server/identity';
 
 const chatLogger = new ChatLogger();
 
@@ -89,14 +89,13 @@ export default async function handler(
 
     const rangeInfo = parseDashboardRange(req.query.range);
 
-    // Convert Next headers object into Web Headers for shared SWA parser.
     const headers = new Headers();
     for (const [k, v] of Object.entries(req.headers)) {
       if (typeof v === 'string') headers.set(k, v);
       else if (Array.isArray(v)) headers.set(k, v.join(','));
     }
 
-    requireSwaRole(headers, 'admin');
+    requireRole(headers, 'admin');
 
     const container = (await chatLogger.containerResponsePromise).container;
 

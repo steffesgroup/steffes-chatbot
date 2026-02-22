@@ -1,16 +1,1 @@
-{
-  "routes": [
-    {
-      "route": "/dashboard",
-      "allowedRoles": ["admin"]
-    },
-    {
-      "route": "/dashboard/*",
-      "allowedRoles": ["admin"]
-    },
-    {
-      "route": "/api/dashboard/*",
-      "allowedRoles": ["admin"]
-    }
-  ]
-}
+{}

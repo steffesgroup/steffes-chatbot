@@ -2,11 +2,13 @@ import { SupportedExportFormats } from '@/types/export';
 import { PluginKey } from '@/types/plugin';
 import {
   IconFileExport,
+  IconLayoutDashboard,
   IconMoon,
-  IconSun,
   IconSettings,
+  IconSun,
 } from '@tabler/icons-react';
 import { useTranslation } from 'next-i18next';
+import { useRouter } from 'next/router';
 import { FC } from 'react';
 import { Import } from '../Settings/Import';
 import { Key } from '../Settings/Key';
@@ -19,6 +21,7 @@ interface Props {
   apiKey: string;
   pluginKeys: PluginKey[];
   conversationsCount: number;
+  isAdmin?: boolean;
   onToggleLightMode: (mode: 'light' | 'dark') => void;
   onApiKeyChange: (apiKey: string) => void;
   onClearConversations: () => void;
@@ -33,6 +36,7 @@ export const ChatbarSettings: FC<Props> = ({
   apiKey,
   pluginKeys,
   conversationsCount,
+  isAdmin,
   onToggleLightMode,
   onApiKeyChange,
   onClearConversations,
@@ -42,9 +46,18 @@ export const ChatbarSettings: FC<Props> = ({
   onClearPluginKey,
 }) => {
   const { t } = useTranslation('sidebar');
+  const router = useRouter();
 
   return (
     <div className="flex flex-col items-center space-y-1 border-t border-white/20 pt-1 text-sm">
+      {isAdmin && (
+        <SidebarButton
+          text="Admin Dashboard"
+          icon={<IconLayoutDashboard size={18} />}
+          onClick={() => router.push('/dashboard')}
+        />
+      )}
+
       {conversationsCount > 0 ? (
         <ClearConversations onClearConversations={onClearConversations} />
       ) : null}

@@ -72,6 +72,8 @@ const Home: React.FC<HomeProps> = ({
 
   const [showSidebar, setShowSidebar] = useState<boolean>(true);
 
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+
   const [prompts, setPrompts] = useState<Prompt[]>([]);
 
   const getFallbackModel = (): OpenAIModel => {
@@ -766,6 +768,13 @@ const Home: React.FC<HomeProps> = ({
   // EFFECTS  --------------------------------------------
 
   useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => r.json())
+      .then((data) => setIsAdmin(data.isAdmin === true))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     if (currentMessage) {
       handleSend(currentMessage);
       setCurrentMessage(undefined);
@@ -960,6 +969,7 @@ const Home: React.FC<HomeProps> = ({
                   apiKey={apiKey}
                   pluginKeys={pluginKeys}
                   folders={folders.filter((folder) => folder.type === 'chat')}
+                  isAdmin={isAdmin}
                   onToggleLightMode={handleLightMode}
                   onCreateFolder={(name) => handleCreateFolder(name, 'chat')}
                   onDeleteFolder={handleDeleteFolder}

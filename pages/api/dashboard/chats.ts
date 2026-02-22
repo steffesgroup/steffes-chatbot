@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { ChatLogger } from '../../../steffes-packages/chat-logger';
 import { parseDashboardRange } from '../../../utils/server/dashboardRange';
-import { requireSwaRole } from '../../../utils/server/identity';
+import { requireRole } from '../../../utils/server/identity';
 
 const chatLogger = new ChatLogger();
 
@@ -50,7 +50,7 @@ export default async function handler(
       else if (Array.isArray(v)) headers.set(k, v.join(','));
     }
 
-    requireSwaRole(headers, 'admin');
+    requireRole(headers, 'admin');
 
     const container = (await chatLogger.containerResponsePromise).container;
 

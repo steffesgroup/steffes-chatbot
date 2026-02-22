@@ -186,6 +186,12 @@ export default function DashboardPage() {
       <div className="mx-auto max-w-6xl px-4 py-6">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div>
+            <button
+              onClick={() => router.push('/')}
+              className="mb-2 inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200"
+            >
+              ← Back to Chat
+            </button>
             <h1 className="text-2xl font-semibold">Admin Dashboard</h1>
             <p className="mt-1 text-sm text-gray-300">
               Reads from Cosmos via admin-only API routes.

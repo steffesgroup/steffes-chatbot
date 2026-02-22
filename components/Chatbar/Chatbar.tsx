@@ -19,6 +19,7 @@ interface Props {
   apiKey: string;
   pluginKeys: PluginKey[];
   folders: Folder[];
+  isAdmin?: boolean;
   onCreateFolder: (name: string) => void;
   onDeleteFolder: (folderId: string) => void;
   onUpdateFolder: (folderId: string, name: string) => void;
@@ -46,6 +47,7 @@ export const Chatbar: FC<Props> = ({
   apiKey,
   pluginKeys,
   folders,
+  isAdmin,
   onCreateFolder,
   onDeleteFolder,
   onUpdateFolder,
@@ -200,6 +202,7 @@ export const Chatbar: FC<Props> = ({
         apiKey={apiKey}
         pluginKeys={pluginKeys}
         conversationsCount={conversations.length}
+        isAdmin={isAdmin}
         onToggleLightMode={onToggleLightMode}
         onApiKeyChange={onApiKeyChange}
         onClearConversations={onClearConversations}

@@ -34,7 +34,6 @@
     "uuid": "^9.0.0"
   },
   "devDependencies": {
-    "@azure/static-web-apps-cli": "^2.0.8",
     "@mozilla/readability": "^0.4.4",
     "@tailwindcss/typography": "^0.5.9",
     "@types/jsdom": "^21.1.1",

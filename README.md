@@ -2,7 +2,6 @@
 
 - Cache-bust default system prompt
 - Auto bump app version
-- Clean up Azure Static Web Apps auth/config remnants (e.g. `staticwebapp.config.json` + SWA-specific role naming)
 
 # Configuring LLMs
 
